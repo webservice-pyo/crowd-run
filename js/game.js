@@ -962,6 +962,8 @@ const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0x87CEEB, 40, 80);
 
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 200);
+camera.position.set(0, 8, -8);
+camera.lookAt(0, 0, 5);
 
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
 scene.add(ambientLight);
@@ -1335,29 +1337,57 @@ function createBoss3D(bossData) {
 // ============================================================
 //  FALLBACK CHARACTER (when model fails to load)
 // ============================================================
-function createFallbackCharacter(color, scale = 0.45) {
+function createFallbackCharacter(color, scale = 1.0) {
   const group = new THREE.Group();
   const mat = new THREE.MeshStandardMaterial({ color });
   // Body
   const body = new THREE.Mesh(GEO.box, mat);
-  body.scale.set(scale * 0.7, scale, scale * 0.5);
-  body.position.y = scale * 0.5;
+  body.scale.set(0.5, 0.8, 0.35);
+  body.position.y = 0.7;
   body.castShadow = true;
   group.add(body);
   // Head
-  const head = new THREE.Mesh(new THREE.SphereGeometry(scale * 0.35, 10, 10), mat);
-  head.position.y = scale * 1.2;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.25, 10, 10), mat);
+  head.position.y = 1.35;
   head.castShadow = true;
   group.add(head);
   // Eyes
-  const eyeGeo = new THREE.SphereGeometry(0.04, 6, 6);
+  const eyeGeo = new THREE.SphereGeometry(0.05, 6, 6);
   const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
   const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
-  eyeL.position.set(-0.06, scale * 1.25, scale * 0.3);
+  eyeL.position.set(-0.08, 1.4, 0.2);
   group.add(eyeL);
   const eyeR = eyeL.clone();
-  eyeR.position.set(0.06, scale * 1.25, scale * 0.3);
+  eyeR.position.set(0.08, 1.4, 0.2);
   group.add(eyeR);
+  // Pupils
+  const pupilGeo = new THREE.SphereGeometry(0.025, 6, 6);
+  const pupilMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
+  const pupilL = new THREE.Mesh(pupilGeo, pupilMat);
+  pupilL.position.set(-0.08, 1.4, 0.24);
+  group.add(pupilL);
+  const pupilR = pupilL.clone();
+  pupilR.position.set(0.08, 1.4, 0.24);
+  group.add(pupilR);
+  // Legs
+  const legMat = new THREE.MeshStandardMaterial({ color: 0x1565C0 });
+  const legGeo = new THREE.BoxGeometry(0.15, 0.4, 0.15);
+  const legL = new THREE.Mesh(legGeo, legMat);
+  legL.position.set(-0.12, 0.2, 0);
+  group.add(legL);
+  const legR = new THREE.Mesh(legGeo, legMat);
+  legR.position.set(0.12, 0.2, 0);
+  group.add(legR);
+  // Arms
+  const armGeo = new THREE.BoxGeometry(0.12, 0.5, 0.12);
+  const armL = new THREE.Mesh(armGeo, mat);
+  armL.position.set(-0.35, 0.65, 0);
+  group.add(armL);
+  const armR = new THREE.Mesh(armGeo, mat);
+  armR.position.set(0.35, 0.65, 0);
+  group.add(armR);
+
+  group.scale.set(scale, scale, scale);
   return group;
 }
 
@@ -1451,7 +1481,7 @@ class Game {
       this.playerMixer = createSoldierMixer(this.playerMesh);
       if (this.playerMixer) playAnimation(this.playerMixer, 'run');
     } else {
-      this.playerMesh = createFallbackCharacter(0x2196F3, 0.55);
+      this.playerMesh = createFallbackCharacter(0x2196F3, 1.0);
       this.playerMesh.position.set(0, 0, 0);
       this.objects.add(this.playerMesh);
     }
@@ -1563,11 +1593,9 @@ class Game {
         group.userData.mixer = mixer;
       }
     } else {
-      // Fallback sphere
-      const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 8),
-        new THREE.MeshStandardMaterial({ color: 0x64b5f6, emissive: 0x2196f3, emissiveIntensity: 0.3 }));
-      mesh.position.y = 0.4;
-      group.add(mesh);
+      // Fallback mini character
+      const fb = createFallbackCharacter(0x64b5f6, 0.6);
+      group.add(fb);
     }
 
     // + label
@@ -1669,7 +1697,7 @@ class Game {
         if (mixer) playAnimation(mixer, 'run');
       } else {
         // Fallback: simple character
-        allyMesh = createFallbackCharacter(0x42a5f5, 0.35);
+        allyMesh = createFallbackCharacter(0x42a5f5, 0.7);
       }
 
       const row = Math.floor(i / 5);
