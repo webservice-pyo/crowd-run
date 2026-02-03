@@ -1386,6 +1386,12 @@ function createFallbackCharacter(color, scale = 1.0) {
   armR.position.set(0.5, 1.1, 0);
   group.add(armR);
 
+  // Store refs for walk animation
+  group.userData.legL = legL;
+  group.userData.legR = legR;
+  group.userData.armL = armL;
+  group.userData.armR = armR;
+
   group.scale.set(scale, scale, scale);
   return group;
 }
@@ -1472,24 +1478,30 @@ class Game {
     sideR.receiveShadow = true;
     this.objects.add(sideR);
 
-    // Player (Soldier.glb or fallback)
-    this.playerMesh = cloneSoldier(0.012);
-    if (this.playerMesh) {
-      this.playerMesh.position.set(0, 0, 0);
-      this.objects.add(this.playerMesh);
-      this.playerMixer = createSoldierMixer(this.playerMesh);
-      if (this.playerMixer) playAnimation(this.playerMixer, 'run');
-    } else {
-      this.playerMesh = createFallbackCharacter(0x2196F3, 1.5);
-      this.playerMesh.position.set(0, 0, 0);
-      this.objects.add(this.playerMesh);
-    }
+    // Player - always use visible fallback character (서준이)
+    this.playerMesh = createFallbackCharacter(0x2196F3, 1.8);
+    this.playerMesh.position.set(0, 0, 0);
+    this.objects.add(this.playerMesh);
 
-    // Player indicator arrow above head
+    // Player name label "서준" above head
+    const labelCanvas = document.createElement('canvas');
+    labelCanvas.width = 128; labelCanvas.height = 64;
+    const labelCtx = labelCanvas.getContext('2d');
+    labelCtx.fillStyle = '#00ff88';
+    labelCtx.font = 'bold 36px Arial';
+    labelCtx.textAlign = 'center';
+    labelCtx.fillText('서준', 64, 42);
+    const labelTex = new THREE.CanvasTexture(labelCanvas);
+    const labelSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTex, depthTest: false }));
+    labelSprite.scale.set(1.5, 0.75, 1);
+    labelSprite.position.y = 3.8;
+    this.playerMesh.add(labelSprite);
+
+    // Green arrow indicator
     const arrowMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-    const arrowMesh = new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.8, 8), arrowMat);
-    arrowMesh.position.y = 3.2;
-    arrowMesh.rotation.x = Math.PI; // point downward
+    const arrowMesh = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.6, 8), arrowMat);
+    arrowMesh.position.y = 3.0;
+    arrowMesh.rotation.x = Math.PI;
     this.playerMesh.add(arrowMesh);
     this._playerArrow = arrowMesh;
 
@@ -1583,29 +1595,8 @@ class Game {
 
   createAllyPickup(data) {
     const group = new THREE.Group();
-    // Glowing soldier silhouette
-    const soldier = cloneSoldier(0.009);
-    if (soldier) {
-      soldier.traverse(child => {
-        if (child.isMesh) {
-          child.material = new THREE.MeshStandardMaterial({
-            color: 0x64b5f6,
-            emissive: 0x2196f3,
-            emissiveIntensity: 0.3,
-            transparent: true,
-            opacity: 0.85
-          });
-        }
-      });
-      group.add(soldier);
-      const mixer = createSoldierMixer(soldier);
-      if (mixer) {
-        playAnimation(mixer, 'idle');
-        group.userData.mixer = mixer;
-      }
-    } else {
-      // Fallback mini character
-      const fb = createFallbackCharacter(0x64b5f6, 0.6);
+    {
+      const fb = createFallbackCharacter(0x64b5f6, 0.8);
       group.add(fb);
     }
 
@@ -1701,15 +1692,8 @@ class Game {
 
     const count = Math.min(this.allies, 40);
     for (let i = 0; i < count; i++) {
-      let allyMesh = cloneSoldier(0.009);
+      let allyMesh = createFallbackCharacter(0x42a5f5, 1.2);
       let mixer = null;
-      if (allyMesh) {
-        mixer = createSoldierMixer(allyMesh);
-        if (mixer) playAnimation(mixer, 'run');
-      } else {
-        // Fallback: simple character
-        allyMesh = createFallbackCharacter(0x42a5f5, 1.0);
-      }
 
       const row = Math.floor(i / 5);
       const col = (i % 5) - 2;
@@ -1813,11 +1797,29 @@ class Game {
 
       if (this.playerMesh) {
         this.playerMesh.position.set(this.playerX, 0, this.playerZ);
+        // Walk animation for fallback character
+        const walkSpeed = 8;
+        if (this.playerMesh.userData.legL) {
+          const swing = Math.sin(time * walkSpeed) * 0.4;
+          this.playerMesh.userData.legL.rotation.x = swing;
+          this.playerMesh.userData.legR.rotation.x = -swing;
+          this.playerMesh.userData.armL.rotation.x = -swing;
+          this.playerMesh.userData.armR.rotation.x = swing;
+        }
       }
 
       this.allyMeshes.forEach((m) => {
         m.position.x = this.playerX + m.userData.offsetX;
         m.position.z = this.playerZ + m.userData.offsetZ;
+        // Ally walk animation
+        if (m.userData.legL) {
+          const phase = m.userData.bobPhase || 0;
+          const swing = Math.sin(time * 8 + phase) * 0.4;
+          m.userData.legL.rotation.x = swing;
+          m.userData.legR.rotation.x = -swing;
+          m.userData.armL.rotation.x = -swing;
+          m.userData.armR.rotation.x = swing;
+        }
       });
 
       // Obstacle collisions
