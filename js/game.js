@@ -959,11 +959,11 @@ renderer.setClearColor(0x87CEEB);
 document.body.insertBefore(renderer.domElement, document.body.firstChild);
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0x87CEEB, 30, 60);
+scene.fog = new THREE.Fog(0x87CEEB, 35, 70);
 
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 200);
-camera.position.set(0, 4.5, -5);
-camera.lookAt(0, 1, 4);
+camera.position.set(0, 6, -6);
+camera.lookAt(0, 0.5, 5);
 
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
 scene.add(ambientLight);
@@ -991,7 +991,7 @@ const MAT = {
   coin: new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffaa00, emissiveIntensity: 0.3 }),
   gateMultiply: new THREE.MeshStandardMaterial({ color: 0x4caf50, transparent: true, opacity: 0.7 }),
   gateAdd: new THREE.MeshStandardMaterial({ color: 0x7c4dff, transparent: true, opacity: 0.7 }),
-  bullet: new THREE.MeshBasicMaterial({ color: 0xffff00 }),
+  bullet: new THREE.MeshBasicMaterial({ color: 0xffff00, transparent: true, opacity: 0.9 }),
   // Villain materials
   zombieBody: new THREE.MeshStandardMaterial({ color: 0x556b2f, roughness: 0.8 }),
   zombieHead: new THREE.MeshStandardMaterial({ color: 0x6b8e23 }),
@@ -1016,7 +1016,7 @@ const GEO = {
   sphereLarge: new THREE.SphereGeometry(0.5, 12, 12),
   cylinder: new THREE.CylinderGeometry(0.15, 0.15, 0.8, 8),
   coin: new THREE.CylinderGeometry(0.3, 0.3, 0.08, 16),
-  bullet: new THREE.SphereGeometry(0.08, 6, 6),
+  bullet: new THREE.SphereGeometry(0.2, 8, 8),
   cone: new THREE.ConeGeometry(0.2, 0.6, 8),
 };
 
@@ -1478,8 +1478,14 @@ class Game {
     sideR.receiveShadow = true;
     this.objects.add(sideR);
 
-    // Player - always use visible fallback character (서준이)
-    this.playerMesh = createFallbackCharacter(0x2196F3, 1.8);
+    // Player (try 3D model first, then fallback)
+    this.playerMesh = cloneSoldier(0.012);
+    if (this.playerMesh) {
+      this.playerMixer = createSoldierMixer(this.playerMesh);
+      if (this.playerMixer) playAnimation(this.playerMixer, 'run');
+    } else {
+      this.playerMesh = createFallbackCharacter(0x2196F3, 0.55);
+    }
     this.playerMesh.position.set(0, 0, 0);
     this.objects.add(this.playerMesh);
 
@@ -1493,21 +1499,21 @@ class Game {
     labelCtx.fillText('서준', 64, 42);
     const labelTex = new THREE.CanvasTexture(labelCanvas);
     const labelSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTex, depthTest: false }));
-    labelSprite.scale.set(1.5, 0.75, 1);
-    labelSprite.position.y = 3.8;
+    labelSprite.scale.set(1.2, 0.6, 1);
+    labelSprite.position.y = 2.3;
     this.playerMesh.add(labelSprite);
 
     // Green arrow indicator
     const arrowMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-    const arrowMesh = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.6, 8), arrowMat);
-    arrowMesh.position.y = 3.0;
+    const arrowMesh = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.35, 8), arrowMat);
+    arrowMesh.position.y = 2.0;
     arrowMesh.rotation.x = Math.PI;
     this.playerMesh.add(arrowMesh);
     this._playerArrow = arrowMesh;
 
-    // Reset camera to player start position
-    camera.position.set(this.playerX * 0.3, 4.5, this.playerZ - 5);
-    camera.lookAt(this.playerX * 0.5, 1, this.playerZ + 4);
+    // Reset camera to player start position (behind & above like Last War)
+    camera.position.set(0, 6, -6);
+    camera.lookAt(0, 0.5, 5);
 
     // Allies
     this.rebuildAllyMeshes();
@@ -1596,7 +1602,7 @@ class Game {
   createAllyPickup(data) {
     const group = new THREE.Group();
     {
-      const fb = createFallbackCharacter(0x64b5f6, 0.8);
+      const fb = cloneSoldier(0.009) || createFallbackCharacter(0x64b5f6, 0.4);
       group.add(fb);
     }
 
@@ -1692,13 +1698,19 @@ class Game {
 
     const count = Math.min(this.allies, 40);
     for (let i = 0; i < count; i++) {
-      let allyMesh = createFallbackCharacter(0x42a5f5, 1.2);
+      let allyMesh = cloneSoldier(0.009);
       let mixer = null;
+      if (allyMesh) {
+        mixer = createSoldierMixer(allyMesh);
+        if (mixer) playAnimation(mixer, 'run');
+      } else {
+        allyMesh = createFallbackCharacter(0x42a5f5, 0.45);
+      }
 
       const row = Math.floor(i / 5);
       const col = (i % 5) - 2;
-      allyMesh.userData.offsetX = col * 0.8 + (Math.random() - 0.5) * 0.2;
-      allyMesh.userData.offsetZ = -(row + 1) * 0.9 + (Math.random() - 0.5) * 0.2;
+      allyMesh.userData.offsetX = col * 0.5 + (Math.random() - 0.5) * 0.15;
+      allyMesh.userData.offsetZ = -(row + 1) * 0.55 + (Math.random() - 0.5) * 0.15;
       allyMesh.userData.bobPhase = Math.random() * Math.PI * 2;
 
       this.objects.add(allyMesh);
@@ -1769,11 +1781,18 @@ class Game {
   }
 
   spawnBullet(fromX, fromY, fromZ, toX, toY, toZ) {
-    const mesh = new THREE.Mesh(GEO.bullet, MAT.bullet);
-    mesh.position.set(fromX, fromY, fromZ);
+    const group = new THREE.Group();
+    // Bullet core (bright yellow)
+    const core = new THREE.Mesh(GEO.bullet, MAT.bullet);
+    group.add(core);
+    // Glow effect (orange halo)
+    const glowMat = new THREE.MeshBasicMaterial({ color: 0xff8800, transparent: true, opacity: 0.4 });
+    const glow = new THREE.Mesh(new THREE.SphereGeometry(0.35, 6, 6), glowMat);
+    group.add(glow);
+    group.position.set(fromX, fromY, fromZ);
     const dir = new THREE.Vector3(toX - fromX, toY - fromY, toZ - fromZ).normalize();
-    this.objects.add(mesh);
-    this.bullets.push({ mesh, dir, speed: 30, life: 1.0 });
+    this.objects.add(group);
+    this.bullets.push({ mesh: group, dir, speed: 25, life: 1.2 });
   }
 
   update(dt) {
@@ -1916,7 +1935,7 @@ class Game {
 
       // Player arrow bob
       if (this._playerArrow) {
-        this._playerArrow.position.y = 3.5 + Math.sin(time * 4) * 0.2;
+        this._playerArrow.position.y = 2.0 + Math.sin(time * 4) * 0.15;
       }
 
       if (this.playerZ >= this.stageData.boss.z - 5) {
@@ -1946,12 +1965,12 @@ class Game {
         sound.playShoot();
         screenShake.trigger(0.15, 0.1);
 
-        const bulletCount = Math.min(this.allies, 10);
+        const bulletCount = Math.min(this.allies, 8);
         for (let i = 0; i < bulletCount; i++) {
-          const fromX = this.playerX + (Math.random() - 0.5) * 3;
-          const fromZ = this.playerZ - Math.random() * 2;
-          this.spawnBullet(fromX, 0.5, fromZ,
-            this.bossObject.position.x + (Math.random() - 0.5),
+          const fromX = this.playerX + (Math.random() - 0.5) * 2;
+          const fromZ = this.playerZ + 0.5;
+          this.spawnBullet(fromX, 1.0, fromZ,
+            this.bossObject.position.x + (Math.random() - 0.5) * 0.5,
             1.5, this.bossObject.position.z);
         }
 
@@ -2025,15 +2044,15 @@ class Game {
     // Screen shake update
     screenShake.update(dt);
 
-    // Camera - closer and lower for better visibility
+    // Camera - behind & above player (like Last War runner)
     const camTargetX = this.playerX * 0.3;
-    const camTargetZ = this.playerZ - 5;
+    const camTargetZ = this.playerZ - 6;
     camera.position.x += (camTargetX - camera.position.x) * 3 * dt;
     camera.position.z += (camTargetZ - camera.position.z) * 3 * dt;
-    camera.position.y = 4.5;
+    camera.position.y = 6;
     camera.position.x += screenShake.offsetX;
     camera.position.y += screenShake.offsetY;
-    camera.lookAt(this.playerX * 0.5, 1, this.playerZ + 4);
+    camera.lookAt(this.playerX * 0.3, 0.5, this.playerZ + 5);
 
     dirLight.position.set(this.playerX + 5, 15, this.playerZ - 5);
     dirLight.target.position.set(this.playerX, 0, this.playerZ);
