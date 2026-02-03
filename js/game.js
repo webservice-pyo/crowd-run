@@ -962,7 +962,7 @@ const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0x87CEEB, 40, 80);
 
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 200);
-camera.position.set(0, 8, -8);
+camera.position.set(0, 7, -7);
 camera.lookAt(0, 0, 5);
 
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
@@ -1025,47 +1025,59 @@ const GEO = {
 // ============================================================
 function createZombieEnemy(data) {
   const group = new THREE.Group();
+  const zombieSkin = new THREE.MeshLambertMaterial({ color: 0x5a7a3a });
+  const zombieDark = new THREE.MeshLambertMaterial({ color: 0x3d5a2a });
+  const clothMat = new THREE.MeshLambertMaterial({ color: 0x4a3728 });
 
-  // Torso
-  const torso = new THREE.Mesh(GEO.box, MAT.zombieBody);
-  torso.scale.set(0.5, 0.7, 0.35);
-  torso.position.y = 0.65;
+  // Torso (torn clothes)
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.65, 0.3), clothMat);
+  torso.position.y = 0.72;
   torso.castShadow = true;
   group.add(torso);
+  // Exposed belly
+  const belly = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.2, 0.15), zombieSkin);
+  belly.position.set(0.05, 0.55, 0.12);
+  group.add(belly);
 
-  // Head
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 10), MAT.zombieHead);
-  head.position.y = 1.2;
+  // Head (tilted)
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 10), zombieSkin);
+  head.position.set(0.05, 1.25, 0.03);
+  head.rotation.z = 0.2;
   head.castShadow = true;
   group.add(head);
+  // Jaw
+  const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.06, 0.1), zombieDark);
+  jaw.position.set(0.05, 1.08, 0.15);
+  group.add(jaw);
 
-  // Eyes (glowing red)
-  const eyeGeo = new THREE.SphereGeometry(0.04, 6, 6);
-  const eyeL = new THREE.Mesh(eyeGeo, MAT.zombieEye);
-  eyeL.position.set(-0.08, 1.24, 0.18);
+  // Glowing red eyes
+  const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+  const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 6), eyeMat);
+  eyeL.position.set(-0.06, 1.29, 0.17);
   group.add(eyeL);
   const eyeR = eyeL.clone();
-  eyeR.position.set(0.08, 1.24, 0.18);
+  eyeR.position.set(0.1, 1.29, 0.17);
   group.add(eyeR);
 
   // Arms reaching forward
-  const armGeo = new THREE.BoxGeometry(0.12, 0.12, 0.5);
-  const armL = new THREE.Mesh(armGeo, MAT.zombieArm);
-  armL.position.set(-0.35, 0.8, 0.25);
-  armL.rotation.x = -0.3;
+  const armL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.45, 0.1), zombieSkin);
+  armL.position.set(-0.35, 0.75, 0.2);
+  armL.rotation.x = -0.8;
+  armL.rotation.z = 0.15;
   group.add(armL);
-  const armR = new THREE.Mesh(armGeo, MAT.zombieArm);
-  armR.position.set(0.35, 0.8, 0.25);
-  armR.rotation.x = -0.3;
+  const armR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.45, 0.1), zombieSkin);
+  armR.position.set(0.35, 0.85, 0.15);
+  armR.rotation.x = -0.6;
+  armR.rotation.z = -0.1;
   group.add(armR);
 
-  // Legs
-  const legGeo = new THREE.BoxGeometry(0.15, 0.4, 0.15);
-  const legL = new THREE.Mesh(legGeo, MAT.zombieBody);
-  legL.position.set(-0.12, 0.2, 0);
+  // Legs (shuffling pose)
+  const legL = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.4, 0.13), clothMat);
+  legL.position.set(-0.1, 0.2, 0.05);
+  legL.rotation.x = -0.1;
   group.add(legL);
-  const legR = new THREE.Mesh(legGeo, MAT.zombieBody);
-  legR.position.set(0.12, 0.2, 0);
+  const legR = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.4, 0.13), clothMat);
+  legR.position.set(0.12, 0.2, -0.05);
   group.add(legR);
 
   // HP label
@@ -1078,7 +1090,7 @@ function createZombieEnemy(data) {
   ctx.fillText(`HP ${data.health}`, 64, 45);
   const tex = new THREE.CanvasTexture(canvas);
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex }));
-  sprite.scale.set(1.2, 0.6, 1);
+  sprite.scale.set(1.0, 0.5, 1);
   sprite.position.y = 1.7;
   group.add(sprite);
 
@@ -1499,8 +1511,8 @@ class Game {
     this.playerMesh.add(arrowMesh);
     this._playerArrow = arrowMesh;
 
-    // Reset camera (behind & above like Last War runner)
-    camera.position.set(0, 8, -8);
+    // Reset camera
+    camera.position.set(0, 7, -7);
     camera.lookAt(0, 0, 5);
 
     // Allies
@@ -1555,32 +1567,41 @@ class Game {
 
   createRedBox(data) {
     const group = new THREE.Group();
-    const box = new THREE.Mesh(GEO.box, MAT.redBox);
-    box.scale.set(1.2, 1.2, 1.2);
-    box.position.y = 0.6;
-    box.castShadow = true;
-    group.add(box);
-
-    // Spikes on top
-    for (let i = 0; i < 4; i++) {
-      const spike = new THREE.Mesh(GEO.cone, MAT.redBox);
-      const angle = (i / 4) * Math.PI * 2;
-      spike.position.set(Math.cos(angle) * 0.4, 1.4, Math.sin(angle) * 0.4);
-      spike.scale.set(0.6, 0.6, 0.6);
+    // Barricade with warning stripes
+    const barricadeMat = new THREE.MeshLambertMaterial({ color: 0xcc2222 });
+    const base = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.15, 1.4), barricadeMat);
+    base.position.y = 0.075;
+    group.add(base);
+    // Metal spikes
+    const spikeMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.7, roughness: 0.3 });
+    for (let i = 0; i < 5; i++) {
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.6, 6), spikeMat);
+      const angle = (i / 5) * Math.PI * 2;
+      spike.position.set(Math.cos(angle) * 0.4, 0.45, Math.sin(angle) * 0.4);
+      spike.castShadow = true;
       group.add(spike);
     }
-
+    const centerSpike = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.8, 6), spikeMat);
+    centerSpike.position.y = 0.55;
+    centerSpike.castShadow = true;
+    group.add(centerSpike);
+    // Warning glow
+    const glowMat = new THREE.MeshBasicMaterial({ color: 0xff3333, transparent: true, opacity: 0.3 });
+    const glow = new THREE.Mesh(new THREE.SphereGeometry(0.7, 8, 8), glowMat);
+    glow.position.y = 0.4;
+    group.add(glow);
+    // Damage label
     const canvas = document.createElement('canvas');
     canvas.width = 128; canvas.height = 64;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = '#ff4444';
     ctx.font = 'bold 40px Arial';
     ctx.textAlign = 'center';
     ctx.fillText(`-${data.damage}`, 64, 45);
     const tex = new THREE.CanvasTexture(canvas);
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex }));
-    sprite.scale.set(1.2, 0.6, 1);
-    sprite.position.y = 2.2;
+    sprite.scale.set(1.0, 0.5, 1);
+    sprite.position.y = 1.3;
     group.add(sprite);
 
     group.position.set(data.x, 0, data.z);
@@ -2032,12 +2053,12 @@ class Game {
     // Screen shake update
     screenShake.update(dt);
 
-    // Camera - behind & above (runner game view)
+    // Camera - behind & above
     const camTargetX = this.playerX * 0.3;
-    const camTargetZ = this.playerZ - 8;
+    const camTargetZ = this.playerZ - 7;
     camera.position.x += (camTargetX - camera.position.x) * 3 * dt;
     camera.position.z += (camTargetZ - camera.position.z) * 3 * dt;
-    camera.position.y = 8;
+    camera.position.y = 7;
     camera.position.x += screenShake.offsetX;
     camera.position.y += screenShake.offsetY;
     camera.lookAt(this.playerX * 0.3, 0, this.playerZ + 5);
