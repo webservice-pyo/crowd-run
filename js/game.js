@@ -339,67 +339,63 @@ const MODEL_URLS = [
 
 const gltfLoader = new GLTFLoader();
 
-// Use fetch to download the GLB as ArrayBuffer, then parse with GLTFLoader
-// This avoids silent failures from XMLHttpRequest CORS issues
-function loadSoldierModel(onProgress) {
-  return new Promise(async (resolve, reject) => {
-    for (let i = 0; i < MODEL_URLS.length; i++) {
-      const url = MODEL_URLS[i];
-      console.log(`Trying model from: ${url}`);
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 6000);
+// Load model in background - game starts immediately, model loads async
+function loadSoldierModelBackground() {
+  let urlIndex = 0;
 
-        const response = await fetch(url, {
-          signal: controller.signal,
-          mode: 'cors',
-        });
-        clearTimeout(timeoutId);
+  function tryNext() {
+    if (urlIndex >= MODEL_URLS.length) {
+      console.warn('All model URLs failed - using fallback characters');
+      return;
+    }
+    const url = MODEL_URLS[urlIndex];
+    console.log('Trying model from:', url);
 
-        if (!response.ok) {
-          console.warn(`HTTP ${response.status} from ${url}`);
-          continue;
-        }
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.responseType = 'arraybuffer';
+    xhr.timeout = 6000;
 
-        const contentLength = response.headers.get('content-length');
-        const total = contentLength ? parseInt(contentLength, 10) : 0;
-        const reader = response.body.getReader();
-        const chunks = [];
-        let loaded = 0;
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          chunks.push(value);
-          loaded += value.length;
-          if (total > 0 && onProgress) onProgress(loaded / total);
-        }
-
-        const blob = new Blob(chunks);
-        const arrayBuffer = await blob.arrayBuffer();
-
-        // Parse the GLB data
-        await new Promise((res, rej) => {
-          gltfLoader.parse(arrayBuffer, '', (gltf) => {
+    xhr.onload = function() {
+      if (xhr.status === 200 && xhr.response) {
+        try {
+          gltfLoader.parse(xhr.response, '', function(gltf) {
             soldierModel = gltf.scene;
             soldierAnimations = gltf.animations;
-            console.log('Model loaded successfully, animations:', gltf.animations.map(a => a.name));
-            res(gltf);
-          }, (error) => {
-            console.warn('GLB parse error:', error);
-            rej(error);
+            console.log('Model loaded! Animations:', gltf.animations.map(function(a) { return a.name; }));
+          }, function(err) {
+            console.warn('Parse error:', err);
+            urlIndex++;
+            tryNext();
           });
-        });
-
-        resolve();
-        return;
-      } catch (err) {
-        console.warn(`Failed to load from ${url}:`, err.message || err);
-        continue;
+        } catch (e) {
+          console.warn('Parse exception:', e);
+          urlIndex++;
+          tryNext();
+        }
+      } else {
+        console.warn('HTTP', xhr.status, 'from', url);
+        urlIndex++;
+        tryNext();
       }
-    }
-    reject(new Error('All model URLs failed'));
-  });
+    };
+
+    xhr.onerror = function() {
+      console.warn('Network error from', url);
+      urlIndex++;
+      tryNext();
+    };
+
+    xhr.ontimeout = function() {
+      console.warn('Timeout from', url);
+      urlIndex++;
+      tryNext();
+    };
+
+    xhr.send();
+  }
+
+  tryNext();
 }
 
 function cloneSoldier(scale = 0.012) {
@@ -2342,25 +2338,10 @@ function startApp() {
   animate(performance.now());
 }
 
-// Global safety timeout - if nothing happens in 5s, start anyway with fallback characters
-const safetyTimeout = setTimeout(() => {
-  console.warn('Safety timeout reached, starting without model');
-  if (loadingText) loadingText.textContent = '기본 모드로 시작합니다...';
-  startApp();
-}, 5000);
+// Start app immediately - don't wait for model
+if (loadingFill) loadingFill.style.width = '100%';
+if (loadingText) loadingText.textContent = '시작합니다...';
+setTimeout(startApp, 500);
 
-loadSoldierModel((progress) => {
-  const pct = Math.floor(progress * 100);
-  if (loadingFill) loadingFill.style.width = pct + '%';
-  if (loadingText) loadingText.textContent = `모델 로딩 중... ${pct}%`;
-}).then(() => {
-  clearTimeout(safetyTimeout);
-  if (loadingText) loadingText.textContent = '준비 완료!';
-  if (loadingFill) loadingFill.style.width = '100%';
-  setTimeout(startApp, 300);
-}).catch((err) => {
-  clearTimeout(safetyTimeout);
-  console.error('Model loading failed:', err);
-  if (loadingText) loadingText.textContent = '모델 로딩 실패 - 기본 모드로 시작합니다';
-  setTimeout(startApp, 800);
-});
+// Load 3D model in background (will be used when available)
+loadSoldierModelBackground();
