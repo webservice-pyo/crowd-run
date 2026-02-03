@@ -400,17 +400,21 @@ function loadSoldierModelBackground() {
 
 function cloneSoldier(scale = 1.0) {
   if (!soldierModel) return null;
-  // SkinnedMesh requires SkeletonUtils.clone() for proper bone/skin copying
-  const clone = SkeletonUtilsClone(soldierModel);
-  clone.scale.set(scale, scale, scale);
-  clone.traverse((child) => {
-    if (child.isMesh) {
-      child.castShadow = true;
-      child.receiveShadow = true;
-      child.material = child.material.clone();
-    }
-  });
-  return clone;
+  try {
+    const clone = SkeletonUtilsClone(soldierModel);
+    clone.scale.set(scale, scale, scale);
+    clone.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+        child.material = child.material.clone();
+      }
+    });
+    return clone;
+  } catch (e) {
+    console.warn('cloneSoldier failed:', e);
+    return null;
+  }
 }
 
 function createSoldierMixer(model) {
@@ -2284,19 +2288,27 @@ class Game {
 
   destroy() {
     scene.remove(this.objects);
+    // Only dispose dynamically created geometries/materials, not shared ones
+    const sharedGeos = new Set(Object.values(GEO));
+    const sharedMats = new Set(Object.values(MAT));
     this.objects.traverse(obj => {
-      if (obj.geometry && !Object.values(GEO).includes(obj.geometry)) {
+      if (obj.geometry && !sharedGeos.has(obj.geometry)) {
         obj.geometry.dispose();
       }
-      if (obj.material && !Object.values(MAT).includes(obj.material)) {
-        if (Array.isArray(obj.material)) {
-          obj.material.forEach(m => { if (m.map) m.map.dispose(); m.dispose(); });
-        } else {
-          if (obj.material.map) obj.material.map.dispose();
-          obj.material.dispose();
-        }
+      if (obj.material) {
+        const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+        mats.forEach(m => {
+          if (!sharedMats.has(m)) {
+            if (m.map) m.map.dispose();
+            m.dispose();
+          }
+        });
       }
     });
+    this.playerMesh = null;
+    this.playerMixer = null;
+    this.allyMeshes = [];
+    this.allyMixers = [];
   }
 }
 
@@ -2316,7 +2328,7 @@ function onInputMove(clientX) {
   if (!game || !game.isRunning || !inputActive) return;
   const dx = clientX - lastInputX;
   lastInputX = clientX;
-  game.targetX -= dx * 0.015;
+  game.targetX += dx * 0.015;
   game.targetX = Math.max(-3, Math.min(3, game.targetX));
 }
 function onInputEnd() { inputActive = false; }
@@ -2331,8 +2343,8 @@ touchArea.addEventListener('touchend', onInputEnd);
 
 document.addEventListener('keydown', (e) => {
   if (!game || !game.isRunning) return;
-  if (e.key === 'ArrowLeft' || e.key === 'a') game.targetX += 0.5;
-  if (e.key === 'ArrowRight' || e.key === 'd') game.targetX -= 0.5;
+  if (e.key === 'ArrowLeft' || e.key === 'a') game.targetX -= 0.5;
+  if (e.key === 'ArrowRight' || e.key === 'd') game.targetX += 0.5;
   game.targetX = Math.max(-3, Math.min(3, game.targetX));
 });
 
@@ -2478,6 +2490,7 @@ function showStageIntro(stageId, stageName, callback) {
 
 function startGame(stageId) {
   if (game) game.destroy();
+  game = null; // Clear reference before creating new
   game = new Game(stageId);
   game.setWeapon('fist');
   game.updateHUD();
