@@ -424,18 +424,21 @@ canvas { display: block; }
   animation: slideUp 0.6s ease-out 0.3s both;
 }
 .ending-photo-frame {
-  width: 280px; height: 280px; border-radius: 20px; overflow: hidden;
+  width: 280px; min-height: 280px; max-height: 280px;
+  border-radius: 20px; overflow: hidden;
   border: 3px solid rgba(255,215,0,0.5);
   box-shadow: 0 0 40px rgba(255,215,0,0.2), 0 10px 40px rgba(0,0,0,0.5);
   margin-bottom: 20px;
   opacity: 1 !important;
   transform: none !important;
+  flex-shrink: 0 !important;
+  position: relative;
 }
 .ending-photo {
-  width: 100%; height: 100%; object-fit: cover;
+  width: 280px; height: 280px; object-fit: cover;
   display: block !important;
   opacity: 1 !important;
-  min-height: 280px;
+  position: absolute; top: 0; left: 0;
 }
 .ending-names {
   font-size: 2em; font-weight: 800; color: #fff;
