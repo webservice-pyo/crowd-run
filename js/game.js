@@ -2330,7 +2330,7 @@ function onInputMove(clientX) {
   if (!game || !game.isRunning || !inputActive) return;
   const dx = clientX - lastInputX;
   lastInputX = clientX;
-  game.targetX += dx * 0.015;
+  game.targetX -= dx * 0.015;
   game.targetX = Math.max(-3, Math.min(3, game.targetX));
 }
 function onInputEnd() { inputActive = false; }
@@ -2345,8 +2345,8 @@ touchArea.addEventListener('touchend', onInputEnd);
 
 document.addEventListener('keydown', (e) => {
   if (!game || !game.isRunning) return;
-  if (e.key === 'ArrowLeft' || e.key === 'a') game.targetX -= 0.5;
-  if (e.key === 'ArrowRight' || e.key === 'd') game.targetX += 0.5;
+  if (e.key === 'ArrowLeft' || e.key === 'a') game.targetX += 0.5;
+  if (e.key === 'ArrowRight' || e.key === 'd') game.targetX -= 0.5;
   game.targetX = Math.max(-3, Math.min(3, game.targetX));
 });
 
