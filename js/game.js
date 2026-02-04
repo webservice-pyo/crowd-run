@@ -866,6 +866,8 @@ function showScreen(name) {
   $('hud').classList.remove('active');
   $('bossHpBar').classList.remove('active');
   $('touchArea').style.display = 'none';
+  // 캔버스 다시 표시 (엔딩에서 숨긴 경우 복원)
+  renderer.domElement.style.display = 'block';
 
   if (name === 'menu') {
     $('mainMenu').classList.add('active');
@@ -902,6 +904,9 @@ function showEndingCredit(totalCoins, stars, survivedAllies, startAllies) {
   $('touchArea').style.display = 'none';
   sound.stopBGM();
 
+  // Three.js 캔버스 숨기기 (엔딩 화면이 확실히 보이도록)
+  renderer.domElement.style.display = 'none';
+
   // Play special ending music
   sound.playVictory();
   setTimeout(() => sound.playVictory(), 600);
@@ -922,24 +927,13 @@ function showEndingCredit(totalCoins, stars, survivedAllies, startAllies) {
     endingPhoto.src = 'images/ending.jpg?' + Date.now();
   }
 
-  // CSS 애니메이션 리셋 (두번째 방문 시에도 애니메이션 재생되도록)
+  // 엔딩 화면 표시 (active 제거 후 다시 추가하여 CSS 애니메이션 리트리거)
   const endingEl = $('endingCredit');
   endingEl.classList.remove('active');
-  const container = $('endingContainer');
-  if (container) {
-    container.style.animation = 'none';
-    container.offsetHeight; // reflow 강제
-    container.style.animation = '';
-  }
-  // 자식 요소들의 slideUp 애니메이션도 리셋
-  endingEl.querySelectorAll('[class*="ending-"]').forEach(el => {
-    el.style.animation = 'none';
-    el.offsetHeight;
-    el.style.animation = '';
-  });
-
+  void endingEl.offsetHeight; // reflow 강제
   endingEl.classList.add('active');
   endingEl.scrollTop = 0;
+
   spawnConfetti();
   setTimeout(spawnConfetti, 1500);
   setTimeout(spawnConfetti, 3000);
