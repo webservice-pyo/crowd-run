@@ -694,7 +694,7 @@ const STAGES = [
     rewards: { coins: 1000 }
   },
   {
-    id: 10, name: "최종 결전 - 서준이와 지노의 승리", length: 200,
+    id: 10, name: "최종 결전 - 신유찬의 승리", length: 200,
     enemies: [
       { type: "red_box", x: 0, z: 15, damage: 15 },
       { type: "red_box", x: -2, z: 25, damage: 18 },
@@ -1665,7 +1665,7 @@ class Game {
     labelCtx.fillStyle = '#00ff88';
     labelCtx.font = 'bold 32px Arial';
     labelCtx.textAlign = 'center';
-    labelCtx.fillText('서준 & 지노', 128, 42);
+    labelCtx.fillText('신유찬', 128, 42);
     const labelTex = new THREE.CanvasTexture(labelCanvas);
     const labelSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTex, depthTest: false }));
     labelSprite.scale.set(1.4, 0.4, 1);
