@@ -873,7 +873,7 @@ function showScreen(name) {
     $('mainMenu').classList.add('active');
     $('menuCoins').textContent = `${gameData.coins} 코인`;
     $('menuLevel').textContent = `Lv. ${Math.floor(gameData.maxStage / 5) + 1}`;
-    $('stageLabel').textContent = `스테이지 ${gameData.currentStage}`;
+    renderStageSelect();
     sound.startBGM('menu');
   } else if (name === 'game') {
     $('hud').classList.add('active');
@@ -983,6 +983,42 @@ function renderUpgrades() {
     list.appendChild(item);
   });
 }
+
+function renderStageSelect() {
+  const grid = $('stageSelectGrid');
+  grid.innerHTML = '';
+  const stageNames = [];
+  for (let i = 1; i <= 10; i++) {
+    stageNames.push(getStage(i).name);
+  }
+  for (let i = 1; i <= 10; i++) {
+    const btn = document.createElement('button');
+    const isUnlocked = i <= gameData.maxStage;
+    const isCleared = i < gameData.maxStage;
+    if (isUnlocked) {
+      btn.className = 'stage-btn ' + (isCleared ? 'cleared' : 'unlocked');
+      btn.innerHTML = `${i}`;
+      btn.title = stageNames[i - 1];
+      btn.addEventListener('click', () => {
+        initSound(); sound.playClick();
+        if (!tutorialShown) {
+          // 튜토리얼 후 선택한 스테이지 시작
+          pendingStage = i;
+          showTutorial();
+          return;
+        }
+        gameData.currentStage = i;
+        startGame(i);
+      });
+    } else {
+      btn.className = 'stage-btn locked';
+      btn.innerHTML = `<span class="lock-icon">🔒</span>`;
+    }
+    grid.appendChild(btn);
+  }
+}
+
+let pendingStage = null;
 
 // ============================================================
 //  THREE.JS SETUP
@@ -2524,7 +2560,10 @@ $('btnTutorialOk').addEventListener('click', () => {
   $('tutorial').classList.remove('active');
   try { localStorage.setItem('crowdRunnerTutorial', 'done'); } catch (e) { /* */ }
   tutorialShown = true;
-  startGame(gameData.currentStage);
+  const stageToStart = pendingStage || gameData.currentStage;
+  pendingStage = null;
+  gameData.currentStage = stageToStart;
+  startGame(stageToStart);
 });
 
 // ============================================================
@@ -2573,14 +2612,6 @@ function initSound() {
   sound.resume();
 }
 
-$('btnPlay').addEventListener('click', () => {
-  initSound(); sound.playClick();
-  if (!tutorialShown) {
-    showTutorial();
-    return;
-  }
-  startGame(gameData.currentStage);
-});
 $('btnUpgrade').addEventListener('click', () => { initSound(); sound.playClick(); showScreen('upgrade'); });
 $('btnUpgradeBack').addEventListener('click', () => { sound.playClick(); showScreen('menu'); });
 $('btnNext').addEventListener('click', () => { sound.playClick(); startGame(gameData.currentStage); });
@@ -2596,9 +2627,11 @@ $('btnEndingMenu').addEventListener('click', () => {
   sound.playClick();
   if (game) game.destroy();
   game = null;
-  // 올클리어 후 스테이지 1로 리셋
+  // 올클리어 후 모든 진행 상황 완전 리셋 (스테이지, 코인, 업그레이드)
   gameData.currentStage = 1;
   gameData.maxStage = 1;
+  gameData.coins = 0;
+  gameData.upgrades = { startAllies: 0, attackPower: 0, weaponBonus: 0, coinBonus: 0, health: 0 };
   saveGameData(gameData);
   renderer.domElement.style.display = 'block';
   showScreen('menu');
